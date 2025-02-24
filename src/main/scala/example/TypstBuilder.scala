@@ -22,10 +22,8 @@ import org.http4s.multipart._
 import io.circe.Json
 import io.circe.syntax._
 
-case class Image(url: String, width: Int, height: Int)
-
 object TypstBuilder {
-  def build(content: String, imgbbKey: String): IO[Option[Image]] =
+  def build(content: String, apiKey: String): IO[Option[Image]] =
     (for {
       sourceFile <- createTempFile(sourcePrefix, sourceSuffix)
       targetFile <- createTempFile(targetPrefix, targetSuffix)
@@ -33,7 +31,7 @@ object TypstBuilder {
       for {
         _ <- write(source, "#set page(height: auto, width: auto, margin: 5pt)\n" ++ content)
         success <- compile(source, target)
-        image <- if (success) upload(target, imgbbKey) else IO(None)
+        image <- if (success) upload(target, apiKey) else IO(None)
         _ <- IO.consoleForIO.println(image.toString)
       } yield image
     }
@@ -71,11 +69,11 @@ object TypstBuilder {
       }
     }
 
-  private def upload(file: File, imgbbKey: String): IO[Option[Image]] = {
+  private def upload(file: File, apiKey: String): IO[Option[Image]] = {
     val bytes = Files.readAllBytes(Paths.get(file.toURI))
     val base64 = Base64.getEncoder().encodeToString(bytes)
 
-    val url = s"https://api.imgbb.com/1/upload?expiration=60&key=$imgbbKey"
+    val url = s"https://api.imgbb.com/1/upload?expiration=60&key=$apiKey"
 
     val multipart = Multipart[IO](
       Vector(Part.formData("image", base64))

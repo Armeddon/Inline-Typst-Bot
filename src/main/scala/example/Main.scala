@@ -15,12 +15,12 @@ object Main extends IOApp {
       .use { httpClient =>
         val http = Logger(logBody = false, logHeaders = false)(httpClient)
         args match {
-          case List(botToken, imgbbKey) =>
+          case List(botToken, apiKey) =>
             implicit val api: Api[IO] = createBotBackend(http, botToken)
-            val inlineTypstBot = new InlineTypstBot(imgbbKey)
+            val inlineTypstBot = new InlineTypstBot(apiKey)
             inlineTypstBot.start().as(ExitCode.Success)
           case _ =>
-            IO.raiseError(new RuntimeException("Usage: \n Application $botToken $imgbbKey"))
+            IO.raiseError(new RuntimeException("Usage: \n Application $botToken $apiKey"))
         }
       }
 

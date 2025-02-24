@@ -13,7 +13,7 @@ import telegramium.bots.Message
 import java.nio.file.{Files, Paths}
 import java.util.Base64
 
-class InlineTypstBot(imgbbKey: String)(implicit
+class InlineTypstBot(apiKey: String)(implicit
   bot: Api[IO],
   asyncF: Async[IO],
   parallel: Parallel[IO]
@@ -43,22 +43,20 @@ class InlineTypstBot(imgbbKey: String)(implicit
       def answer(image: Option[Image]): IO[Unit] = {
         answerInlineQuery(
           inlineQueryId = query.id,
-          results = image match {
-            case Some(Image(url, width, height)) => List(InlineQueryResultPhoto(
-                id = "0",
-                photoUrl = url,
-                thumbnailUrl = url,
-                photoWidth = Some(width),
-                photoHeight = Some(height),
-              ))
-            case None => Nil
-          },
+          results = image.map {
+            case Image(url, width, height) => InlineQueryResultPhoto(
+              id = "0",
+              photoUrl = url,
+              thumbnailUrl = url,
+              photoWidth = Some(width),
+              photoHeight = Some(height))
+            }.toList,
           cacheTime = Some(0),
         ).exec.void
       }
 
       for {
-        result <- TypstBuilder.build(query.query, imgbbKey)
+        result <- TypstBuilder.build(query.query, apiKey)
         _ <- answer(result)
       } yield ()
     }
