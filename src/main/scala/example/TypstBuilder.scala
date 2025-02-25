@@ -2,11 +2,10 @@ package example
 
 import cats.effect._
 
-import cats.implicits._
-
-import java.nio.file.{Files, Paths, Path, StandardOpenOption}
 import java.io.File
-
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
 import java.util.Base64
 
 object TypstBuilder {
@@ -21,8 +20,13 @@ object TypstBuilder {
       } yield encoded
     }
 
-  private def createTempFile(prefix: String, suffix: String): Resource[IO, File] =
-    Resource.make(createFile(prefix, suffix))(file => IO.blocking(file.delete).void)
+  private def createTempFile(
+      prefix: String,
+      suffix: String
+  ): Resource[IO, File] =
+    Resource.make(createFile(prefix, suffix))(file =>
+      IO.blocking(file.delete).void
+    )
 
   private def createFile(prefix: String, suffix: String): IO[File] =
     IO.blocking {
@@ -42,31 +46,34 @@ object TypstBuilder {
   private def compile(source: File, target: File): IO[Option[String]] =
     startTypstProcess(source, target).use { process =>
       IO.blocking(process.waitFor()).map {
-        case 0 => Some {
-          encode(readFile(target))
-        }
+        case 0 =>
+          Some {
+            encode(readFile(target))
+          }
         case _ => None
       }
     }
 
-  private def startTypstProcess(source: File, target: File): Resource[IO, Process] =
+  private def startTypstProcess(
+      source: File,
+      target: File
+  ): Resource[IO, Process] =
     Resource.make {
       IO.blocking {
         new ProcessBuilder(
-          "typst", 
+          "typst",
           "compile",
           source.getAbsolutePath(),
           target.getAbsolutePath(),
           "--format=png"
         ).redirectErrorStream(true)
-        .start()
+          .start()
       }
     } { process =>
       IO.blocking {
         if (process.isAlive) process.destroy()
       }.void
     }
-
 
   private def readFile(file: File): Array[Byte] =
     Files.readAllBytes(Paths.get(file.toURI))
@@ -78,5 +85,6 @@ object TypstBuilder {
   private lazy val targetPrefix = "inline_typst_bot_target"
   private lazy val targetSuffix = ".png"
 
-  private lazy val preamble = "#set page(height: auto, width: auto, margin: 5pt)\n"
+  private lazy val preamble =
+    "#set page(height: auto, width: auto, margin: 5pt)\n"
 }
