@@ -3,7 +3,6 @@ package example
 import cats.implicits._
 
 import cats.effect._
-import cats.effect.Async
 import cats.Parallel
 
 import telegramium.bots.high._
@@ -18,7 +17,6 @@ class InlineTypstBot(apiUrl: String)(implicit
   asyncF: Async[IO],
   parallel: Parallel[IO]
   ) extends LongPollBot[IO](bot) {
-
     import cats.syntax.flatMap._
     import cats.syntax.functor._
     import telegramium.bots._
