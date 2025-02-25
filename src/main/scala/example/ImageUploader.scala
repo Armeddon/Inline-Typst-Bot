@@ -21,12 +21,8 @@ import io.circe.Json
 import io.circe.syntax._
 import org.http4s.blaze.client.BlazeClient
 
-class ImageUploader(apiUrl: String) {
-  def upload: File => IO[Option[Image]] = (
-    readBytes _
-      andThen
-    encodeBytes _
-      andThen
+object ImageUploader {
+  def upload(implicit apiUrl: String): String => IO[Option[Image]] = (
     multipart _
       andThen
     request _
@@ -35,16 +31,10 @@ class ImageUploader(apiUrl: String) {
       andThen
     parseResponse _
   )
-  private def readBytes(file: File): Array[Byte] = {
-    Files.readAllBytes(Paths.get(file.toURI))
-  }
-  private def encodeBytes(bytes: Array[Byte]): String = {
-    Base64.getEncoder().encodeToString(bytes)
-  }
   private def multipart(encoded: String): Multipart[IO] = Multipart(
       Vector(Part.formData("image", encoded))
   )
-  private def request(multipart: Multipart[IO]): Request[IO] = Request(
+  private def request(multipart: Multipart[IO])(implicit apiUrl: String): Request[IO] = Request(
     method = POST,
     uri = Uri.unsafeFromString(apiUrl)
   ).withEntity(multipart).putHeaders(multipart.headers)

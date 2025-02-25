@@ -12,18 +12,8 @@ import java.io.File
 
 import java.util.Base64
 
-import org.http4s.client._
-import org.http4s.client.blaze._
-import org.http4s._
-import org.http4s.Method._
-import org.http4s.circe._
-import org.http4s.multipart._
-
-import io.circe.Json
-import io.circe.syntax._
-
 object TypstBuilder {
-  def build(content: String, apiKey: String): IO[Option[Image]] =
+  def build(content: String): IO[Option[String]] =
     (for {
       sourceFile <- createTempFile(sourcePrefix, sourceSuffix)
       targetFile <- createTempFile(targetPrefix, targetSuffix)
@@ -31,9 +21,9 @@ object TypstBuilder {
       for {
         _ <- write(source, "#set page(height: auto, width: auto, margin: 5pt)\n" ++ content)
         success <- compile(source, target)
-        image <- if (success) upload(target, apiKey) else IO(None)
-        _ <- IO.consoleForIO.println(image.toString)
-      } yield image
+        bytes <- if (success) IO(Some(Files.readAllBytes(Paths.get(target.toURI)))) else IO(None)
+        encoded <- if (success) IO(Some(Base64.getEncoder().encodeToString(bytes.get))) else IO(None)
+      } yield encoded
     }
 
   private def createTempFile(prefix: String, suffix: String): Resource[IO, File] =
@@ -68,32 +58,6 @@ object TypstBuilder {
         case _ => false
       }
     }
-
-  private def upload(file: File, apiKey: String): IO[Option[Image]] = {
-    val bytes = Files.readAllBytes(Paths.get(file.toURI))
-    val base64 = Base64.getEncoder().encodeToString(bytes)
-
-    val url = s"https://api.imgbb.com/1/upload?expiration=60&key=$apiKey"
-
-    val multipart = Multipart[IO](
-      Vector(Part.formData("image", base64))
-    )
-    val request = Request[IO](
-      method = POST,
-      uri = Uri.unsafeFromString(url)
-    ).withEntity(multipart)
-     .putHeaders(multipart.headers)
-
-    BlazeClientBuilder[IO].resource.use { client =>
-      client.expect[Json](request).map { response =>
-        Some(Image(
-          response.asObject.get.apply("data").get.asObject.get.apply("url").get.asString.get,
-          response.asObject.get.apply("data").get.asObject.get.apply("width").get.asNumber.get.toInt.get,
-          response.asObject.get.apply("data").get.asObject.get.apply("height").get.asNumber.get.toInt.get
-        ))
-      }
-    }
-  }
 
    private lazy val sourcePrefix = "inline_typst_bot_source"
    private lazy val sourceSuffix = ".typ"

@@ -17,7 +17,7 @@ object Main extends IOApp {
         args match {
           case List(botToken, apiKey) =>
             implicit val api: Api[IO] = createBotBackend(http, botToken)
-            val inlineTypstBot = new InlineTypstBot(apiKey)
+            val inlineTypstBot = new InlineTypstBot(apiUrl(apiKey))
             inlineTypstBot.start().as(ExitCode.Success)
           case _ =>
             IO.raiseError(new RuntimeException("Usage: \n Application $botToken $apiKey"))
@@ -25,5 +25,9 @@ object Main extends IOApp {
       }
 
     private def createBotBackend(http: Client[IO], token: String) =
-      BotApi(http, baseUrl = s"https://api.telegram.org/bot$token")
+      BotApi(http, baseUrl = telegramUrl(token))
+
+    private def telegramUrl(token: String): String = s"https://api.telegram.org/bot$token"
+
+    private def apiUrl(apiKey: String): String = s"https://api.imgbb.com/1/upload?expiration=60&key=$apiKey"
 }
