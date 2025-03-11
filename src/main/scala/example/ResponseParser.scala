@@ -10,6 +10,5 @@ object ResponseParser {
       url <- data("url").flatMap(_.asString)
       width <- data("width").flatMap(_.asNumber).flatMap(_.toInt)
       height <- data("height").flatMap(_.asNumber).flatMap(_.toInt)
-      image <- Some(Image(url, width, height))
-    } yield image
+    } yield Image(url, width, height)
 }
