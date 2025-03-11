@@ -1,6 +1,7 @@
 package example
 
 import cats.effect._
+import cats.data.OptionT
 
 import java.io.File
 import java.nio.file.Files
@@ -45,13 +46,14 @@ object TypstBuilder {
 
   private def compile(source: File, target: File): IO[Option[String]] =
     startTypstProcess(source, target).use { process =>
-      IO.blocking(process.waitFor()).map {
-        case 0 =>
-          Some {
-            encode(readFile(target))
-          }
-        case _ => None
-      }
+      (for {
+        exitCode <- OptionT.liftF(IO.blocking(process.waitFor()))
+        contents <-
+          if (exitCode == 0)
+            OptionT.liftF(readFile(target))
+          else
+            OptionT.none[IO, Array[Byte]]
+      } yield encode(contents)).value
     }
 
   private def startTypstProcess(
@@ -75,8 +77,8 @@ object TypstBuilder {
       }.void
     }
 
-  private def readFile(file: File): Array[Byte] =
-    Files.readAllBytes(Paths.get(file.toURI))
+  private def readFile(file: File): IO[Array[Byte]] =
+    IO.blocking(Files.readAllBytes(Paths.get(file.toURI)))
   private def encode(bytes: Array[Byte]): String =
     Base64.getEncoder().encodeToString(bytes)
 
