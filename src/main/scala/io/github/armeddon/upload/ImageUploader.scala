@@ -1,4 +1,4 @@
-package example
+package io.github.armeddon.upload
 
 import cats.effect._
 import io.circe.Json

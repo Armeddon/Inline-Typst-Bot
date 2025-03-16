@@ -1,8 +1,10 @@
-package example
+package io.github.armeddon.upload
 
 import io.circe.Json
 
 import cats.implicits._
+
+import io.github.armeddon.bot.Image
 
 object ResponseParser {
   def parseImage(json: Json): Option[Image] =

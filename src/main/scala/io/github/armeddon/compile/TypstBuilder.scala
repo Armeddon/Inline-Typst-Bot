@@ -1,4 +1,4 @@
-package example
+package io.github.armeddon.compile
 
 import cats.effect._
 import cats.data.OptionT
@@ -6,18 +6,20 @@ import cats.data.OptionT
 import java.io.File
 import java.nio.file.{Files, Paths, StandardOpenOption}
 
+import io.github.armeddon.format.Format
+
 object TypstBuilder {
   def build(
       content: String,
-      resultFormat: ResultFormat
+      format: Format
   ): IO[Option[Array[Byte]]] =
     (for {
       sourceFile <- createTempFileResource(sourcePrefix, sourceSuffix)
-      targetFile <- createTempFileResource(targetPrefix, resultFormat.suffix)
+      targetFile <- createTempFileResource(targetPrefix, format.suffix)
     } yield (sourceFile, targetFile)).use { case (source, target) =>
       for {
-        _ <- writeTypstCode(source, content, resultFormat)
-        compiled <- compile(source, target, resultFormat)
+        _ <- writeTypstCode(source, content, format)
+        compiled <- compile(source, target, format)
       } yield compiled
     }
 
@@ -39,10 +41,10 @@ object TypstBuilder {
   private def writeTypstCode(
       file: File,
       code: String,
-      resultFormat: ResultFormat
+      format: Format
   ): IO[Unit] =
-    resultFormat match {
-      case ResultFormatHTML =>
+    format match {
+      case Format.HTML =>
         write(file, code)
       case _ => write(file, preamble ++ code)
     }
@@ -55,9 +57,9 @@ object TypstBuilder {
   private def compile(
       source: File,
       target: File,
-      resultFormat: ResultFormat
+      format: Format
   ): IO[Option[Array[Byte]]] =
-    createTypstProcessResource(source, target, resultFormat).use { process =>
+    createTypstProcessResource(source, target, format).use { process =>
       (for {
         exitCode <- OptionT.liftF(IO.blocking(process.waitFor()))
         contents <-
@@ -71,10 +73,10 @@ object TypstBuilder {
   private def createTypstProcessResource(
       source: File,
       target: File,
-      resultFormat: ResultFormat
+      format: Format
   ): Resource[IO, Process] =
     Resource.make {
-      createTypstProcess(source, target, resultFormat)
+      createTypstProcess(source, target, format)
     } {
       killProcess
     }
@@ -82,7 +84,7 @@ object TypstBuilder {
   private def createTypstProcess(
       source: File,
       target: File,
-      resultFormat: ResultFormat
+      format: Format
   ): IO[Process] =
     IO.blocking {
       new ProcessBuilder(
@@ -90,7 +92,7 @@ object TypstBuilder {
         "compile",
         source.getAbsolutePath(),
         target.getAbsolutePath(),
-        "--format=" + resultFormat.format,
+        "--format=" + format.format,
         "--features=html"
       ).redirectErrorStream(true)
         .start()

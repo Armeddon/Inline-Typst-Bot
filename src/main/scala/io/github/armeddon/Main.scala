@@ -1,11 +1,15 @@
-package example
+package io.github.armeddon
 
 import cats.effect._
+
 import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.client.Client
 import org.http4s.client.middleware.Logger
+
 import telegramium.bots.high.Api
 import telegramium.bots.high.BotApi
+
+import io.github.armeddon.bot.InlineTypstBot
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =

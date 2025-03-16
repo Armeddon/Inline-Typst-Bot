@@ -1,4 +1,4 @@
-package example
+package io.github.armeddon.upload
 
 import java.util.Base64
 

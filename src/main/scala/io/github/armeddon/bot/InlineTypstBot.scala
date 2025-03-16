@@ -1,4 +1,4 @@
-package example
+package io.github.armeddon.bot
 
 import cats.Parallel
 import cats.effect._
@@ -6,6 +6,10 @@ import cats.data.OptionT
 
 import telegramium.bots.high._
 import telegramium.bots.high.implicits._
+
+import io.github.armeddon.format.{Format, Message => MsgFormat}
+import io.github.armeddon.compile.TypstBuilder
+import io.github.armeddon.upload._
 
 class InlineTypstBot(apiUrl: String)(implicit
     bot: Api[IO],
@@ -25,7 +29,7 @@ class InlineTypstBot(apiUrl: String)(implicit
         )
       }
       case Some(text) =>
-        parseText(msg.chat.id, text, ResultFormat.default)
+        parseText(msg.chat.id, text, Format.default)
       case None => asyncF.unit
     }
 
@@ -34,7 +38,7 @@ class InlineTypstBot(apiUrl: String)(implicit
       image <- InlineTypstBot.getImage(
         apiUrl,
         query.query,
-        ResultFormat.default
+        Format.default
       )
       _ <- answerInline(query, image)
     } yield ()
@@ -43,8 +47,8 @@ class InlineTypstBot(apiUrl: String)(implicit
     Command
       .parse(cmd)
       .map {
-        case CommandFormat(fmt) => parseText(id, text, fmt)
-        case CommandInfo        => showInfo(id)
+        case Command.Format(fmt) => parseText(id, text, fmt)
+        case Command.Info        => showInfo(id)
       }
       .getOrElse(IO(()))
 
@@ -57,15 +61,15 @@ class InlineTypstBot(apiUrl: String)(implicit
   private def parseText(
       id: Long,
       text: String,
-      resultFormat: ResultFormat
+      resultFormat: Format
   ): IO[Unit] =
     resultFormat.message match {
-      case ResultMessageImage =>
+      case MsgFormat.Image =>
         for {
           image <- InlineTypstBot.getImage(apiUrl, text, resultFormat)
           _ <- answerOnMessageImage(id, image)
         } yield ()
-      case ResultMessageText =>
+      case MsgFormat.Text =>
         for {
           text <- InlineTypstBot.getText(text, resultFormat)
           _ <- answerOnMessageText(id, text)
@@ -113,10 +117,10 @@ object InlineTypstBot {
   private def getImage(
       apiUrl: String,
       code: String,
-      resultFormat: ResultFormat
+      format: Format
   ): IO[Option[Image]] =
     (for {
-      compiled <- OptionT(TypstBuilder.build(code, resultFormat))
+      compiled <- OptionT(TypstBuilder.build(code, format))
       encoded <- OptionT.pure[IO](Encoder.encode(compiled))
       json <- OptionT.liftF(ImageUploader.upload(apiUrl)(encoded))
       image <- OptionT.fromOption[IO](ResponseParser.parseImage(json))
@@ -124,10 +128,10 @@ object InlineTypstBot {
 
   private def getText(
       code: String,
-      resultFormat: ResultFormat
+      format: Format
   ): IO[Option[String]] =
     (for {
-      compiled <- OptionT(TypstBuilder.build(code, resultFormat))
+      compiled <- OptionT(TypstBuilder.build(code, format))
       text <- OptionT.pure[IO](new String(compiled, "UTF-8"))
     } yield text).value
 
