@@ -40,14 +40,13 @@ class InlineTypstBot(apiUrl: String)(implicit
     } yield ()
 
   private def parseCommand(id: Long, cmd: String, text: String): IO[Unit] =
-    IO.println(s"Command is $cmd and text is $text") >>
-      Command
-        .parse(cmd)
-        .map {
-          case CommandFormat(fmt) => parseText(id, text, fmt)
-          case CommandInfo        => showInfo(id)
-        }
-        .getOrElse(IO(()))
+    Command
+      .parse(cmd)
+      .map {
+        case CommandFormat(fmt) => parseText(id, text, fmt)
+        case CommandInfo        => showInfo(id)
+      }
+      .getOrElse(IO(()))
 
   private def showInfo(id: Long): IO[Unit] =
     sendMessage(
