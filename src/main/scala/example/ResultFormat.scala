@@ -6,13 +6,13 @@ sealed trait ResultFormat {
   def message: ResultMessage
 }
 object ResultFormat {
-  def default: ResultFormat = new ResultFormatPNG
+  def default: ResultFormat = ResultFormatPNG
 }
-final class ResultFormatPNG extends ResultFormat {
+final object ResultFormatPNG extends ResultFormat {
   def format = "png"
   def message = ResultMessageImage
 }
-final class ResultFormatHTML extends ResultFormat {
+final object ResultFormatHTML extends ResultFormat {
   def format = "html"
   def message = ResultMessageText
 }

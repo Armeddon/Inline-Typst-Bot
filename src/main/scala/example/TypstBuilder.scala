@@ -42,7 +42,7 @@ object TypstBuilder {
       resultFormat: ResultFormat
   ): IO[Unit] =
     resultFormat match {
-      case _: ResultFormatHTML =>
+      case ResultFormatHTML =>
         write(file, code)
       case _ => write(file, preamble ++ code)
     }
