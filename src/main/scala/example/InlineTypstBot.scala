@@ -17,7 +17,7 @@ class InlineTypstBot(apiUrl: String)(implicit
   override def onMessage(msg: Message): IO[Unit] =
     msg.text match {
       case Some(text) if text.startsWith("/") => {
-        val (cmd, rest) = text.tail.span(!_.isSpaceChar)
+        val (cmd, rest) = text.tail.span(!_.isWhitespace)
         parseCommand(
           msg.chat.id,
           cmd,
@@ -40,13 +40,14 @@ class InlineTypstBot(apiUrl: String)(implicit
     } yield ()
 
   private def parseCommand(id: Long, cmd: String, text: String): IO[Unit] =
-    Command
-      .parse(cmd)
-      .map {
-        case CommandFormat(fmt) => parseText(id, text, fmt)
-        case CommandInfo        => showInfo(id)
-      }
-      .getOrElse(IO(()))
+    IO.println(s"Command is $cmd and text is $text") >>
+      Command
+        .parse(cmd)
+        .map {
+          case CommandFormat(fmt) => parseText(id, text, fmt)
+          case CommandInfo        => showInfo(id)
+        }
+        .getOrElse(IO(()))
 
   private def showInfo(id: Long): IO[Unit] =
     sendMessage(
