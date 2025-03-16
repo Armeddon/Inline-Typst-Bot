@@ -9,5 +9,5 @@ You can send messages with [Typst](https://typst.app) source code to the bot, an
 You can also get HTML source instead of the PNG image, by using the ```/html``` command with the [Typst](https://typst.app) source code.    
 
 
-The project uses the [ImgBB](https://imgbb.com) API for temporary image storage.    
+The project uses the [ImgBB](https://imgbb.com) for temporary image storage.    
 Built with [Telegramium](https://github.com/apimorphism/telegramium).    
