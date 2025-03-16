@@ -15,7 +15,8 @@ object Main extends IOApp {
         args match {
           case List(botToken, apiKey) =>
             implicit val api: Api[IO] = createBotBackend(http, botToken)
-            val inlineTypstBot = new InlineTypstBot(apiUrl(apiKey))
+            val inlineTypstBot =
+              new InlineTypstBot(apiUrl(apiKey))
             inlineTypstBot.start().as(ExitCode.Success)
           case _ =>
             IO.raiseError(

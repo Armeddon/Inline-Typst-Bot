@@ -7,14 +7,17 @@ import java.io.File
 import java.nio.file.{Files, Paths, StandardOpenOption}
 
 object TypstBuilder {
-  def build(content: String): IO[Option[Array[Byte]]] =
+  def build(
+      content: String,
+      resultFormat: ResultFormat
+  ): IO[Option[Array[Byte]]] =
     (for {
       sourceFile <- createTempFileResource(sourcePrefix, sourceSuffix)
-      targetFile <- createTempFileResource(targetPrefix, targetSuffix)
+      targetFile <- createTempFileResource(targetPrefix, resultFormat.suffix)
     } yield (sourceFile, targetFile)).use { case (source, target) =>
       for {
-        _ <- writeTypstCode(source, content)
-        compiled <- compile(source, target)
+        _ <- writeTypstCode(source, content, resultFormat)
+        compiled <- compile(source, target, resultFormat)
       } yield compiled
     }
 
@@ -33,16 +36,28 @@ object TypstBuilder {
       file
     }
 
-  private def writeTypstCode(file: File, code: String): IO[Unit] =
-    write(file, preamble ++ code)
+  private def writeTypstCode(
+      file: File,
+      code: String,
+      resultFormat: ResultFormat
+  ): IO[Unit] =
+    resultFormat match {
+      case _: ResultFormatHTML =>
+        write(file, code)
+      case _ => write(file, preamble ++ code)
+    }
 
   private def write(file: File, content: String): IO[Unit] =
     IO.blocking {
       Files.writeString(file.toPath, content, StandardOpenOption.WRITE)
     }.void
 
-  private def compile(source: File, target: File): IO[Option[Array[Byte]]] =
-    createTypstProcessResource(source, target).use { process =>
+  private def compile(
+      source: File,
+      target: File,
+      resultFormat: ResultFormat
+  ): IO[Option[Array[Byte]]] =
+    createTypstProcessResource(source, target, resultFormat).use { process =>
       (for {
         exitCode <- OptionT.liftF(IO.blocking(process.waitFor()))
         contents <-
@@ -55,22 +70,28 @@ object TypstBuilder {
 
   private def createTypstProcessResource(
       source: File,
-      target: File
+      target: File,
+      resultFormat: ResultFormat
   ): Resource[IO, Process] =
     Resource.make {
-      createTypstProcess(source, target)
+      createTypstProcess(source, target, resultFormat)
     } {
       killProcess
     }
 
-  private def createTypstProcess(source: File, target: File): IO[Process] =
+  private def createTypstProcess(
+      source: File,
+      target: File,
+      resultFormat: ResultFormat
+  ): IO[Process] =
     IO.blocking {
       new ProcessBuilder(
         "typst",
         "compile",
         source.getAbsolutePath(),
         target.getAbsolutePath(),
-        "--format=png"
+        "--format=" + resultFormat.format,
+        "--features=html"
       ).redirectErrorStream(true)
         .start()
     }
@@ -81,12 +102,13 @@ object TypstBuilder {
     }.void
 
   private def readFile(file: File): IO[Array[Byte]] =
-    IO.blocking(Files.readAllBytes(Paths.get(file.toURI)))
+    IO.blocking {
+      Files.readAllBytes(Paths.get(file.toURI))
+    }
 
   private lazy val sourcePrefix = "inline_typst_bot_source"
   private lazy val sourceSuffix = ".typ"
   private lazy val targetPrefix = "inline_typst_bot_target"
-  private lazy val targetSuffix = ".png"
 
   private lazy val preamble =
     "#set page(height: auto, width: auto, margin: 5pt)\n"

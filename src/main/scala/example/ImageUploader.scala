@@ -16,15 +16,18 @@ object ImageUploader {
         andThen
         sendRequest _
   )
+
   private def multipart(encoded: String): Multipart[IO] = Multipart(
     Vector(Part.formData("image", encoded))
   )
+
   private def request(
       multipart: Multipart[IO]
   )(implicit apiUrl: String): Request[IO] = Request(
     method = POST,
     uri = Uri.unsafeFromString(apiUrl)
   ).withEntity(multipart).putHeaders(multipart.headers)
+
   private def sendRequest(request: Request[IO]): IO[Json] =
     BlazeClientBuilder[IO].resource.use { client =>
       client.expect[Json](request)
