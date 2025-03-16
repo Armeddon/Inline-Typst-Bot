@@ -134,7 +134,7 @@ object InlineTypstBot {
   private val infoText = """
 This is a telegram bot, that compiles Typst for you
 You can use the commands /png and /html to specify the output format.
-The default output value is a .png image.
+The default output value is a PNG image.
 
 This bot can be used in inline mode. You can send a message with @InlineTypstBot in any chat to send a compiled image there.
 
