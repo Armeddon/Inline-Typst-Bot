@@ -30,7 +30,7 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
-          cd ~/Inline-Typst-Bot
+          cd ${{ secrets.SERVER_PATH }}
           git pull origin main
           docker compose build
           docker compose up -d
