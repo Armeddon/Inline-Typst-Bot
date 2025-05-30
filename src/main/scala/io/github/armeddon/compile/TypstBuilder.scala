@@ -88,11 +88,10 @@ object TypstBuilder {
   ): IO[Process] =
     IO.blocking {
       new ProcessBuilder(
-        "typst",
-        "compile",
+        "typst", "compile",
         source.getAbsolutePath(),
         target.getAbsolutePath(),
-        "--format=" + format.format,
+        s"--format=${format.format}",
         "--features=html"
       ).redirectErrorStream(true)
         .start()

@@ -9,6 +9,7 @@ ThisBuild / semanticdbVersion := scalafixSemanticdb.revision;
 ThisBuild / scalacOptions += {
     "-Wunused:imports"
 }
+Compile / run / fork := true
 
 lazy val root = (project in file("."))
   .settings(
@@ -23,4 +24,3 @@ lazy val root = (project in file("."))
 
 wartremoverErrors ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.OptionPartial, Wart.ImplicitParameter)
 wartremoverWarnings ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.OptionPartial, Wart.ImplicitParameter)
-// See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for instructions on how to publish to Sonatype.

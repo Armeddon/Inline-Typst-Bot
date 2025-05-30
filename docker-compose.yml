@@ -1,0 +1,14 @@
+services:
+  bot:
+    build:
+      context: .
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    image: inline-typst-bot:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/typst-tmp:/tmp
+    env_file:
+      - .env
+    restart: unless-stopped

@@ -13,21 +13,25 @@ import io.github.armeddon.bot.InlineTypstBot
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
-    BlazeClientBuilder[IO].resource
-      .use { httpClient =>
-        val http = Logger(logBody = false, logHeaders = false)(httpClient)
-        args match {
-          case List(botToken, apiKey) =>
-            implicit val api: Api[IO] = createBotBackend(http, botToken)
-            val inlineTypstBot =
-              new InlineTypstBot(apiUrl(apiKey))
+    for {
+      botToken <- readEnvVar("BOT_TOKEN")
+      apiKey <- readEnvVar("API_KEY")
+      ec <- if (botToken.isDefined && apiKey.isDefined)
+        BlazeClientBuilder[IO].resource
+          .use { httpClient =>
+            val http = Logger(logBody = false, logHeaders = false)(httpClient)
+            implicit val api: Api[IO] = createBotBackend(http, botToken.get)
+            val inlineTypstBot = new InlineTypstBot(apiUrl(apiKey.get))
             inlineTypstBot.start().as(ExitCode.Success)
-          case _ =>
-            IO.raiseError(
-              new RuntimeException("Usage: \n Application $botToken $apiKey")
-            )
-        }
-      }
+          }
+        else 
+          IO.raiseError(
+            new RuntimeException("Environment variables BOT_TOKEN and API_KEY must be set")
+          ) >> IO(ExitCode.Success)
+    } yield ec
+
+  private def readEnvVar(name: String): IO[Option[String]] =
+    IO(sys.env.get(name))
 
   private def createBotBackend(http: Client[IO], token: String) =
     BotApi(http, baseUrl = telegramUrl(token))
