@@ -140,7 +140,7 @@ This is a telegram bot, that compiles Typst for you
 You can use the commands /png and /html to specify the output format.
 The default output is a PNG image.
 
-This bot can be used in inline mode. You can send a message with @InlineTypstBot in any chat to send a compiled image there.
+This bot can be used in inline mode. You can send a message starting with @InlineTypstBot and containing Typst source code in any chat to send a compiled image there instead.
 
 You can see this message again by using either /help or /info command.
 """
