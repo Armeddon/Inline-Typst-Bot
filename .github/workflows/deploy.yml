@@ -16,7 +16,6 @@ jobs:
         key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
           cd ${{ secrets.SERVER_PATH }}
-          git config --global --add safe.directory ${{ secrets.SERVER_PATH }}
           PREV_COMMIT=$(git rev-parse HEAD)
           git pull origin main || exit 1
           docker compose build || {
