@@ -27,7 +27,7 @@ object Main extends IOApp {
         else 
           IO.raiseError(
             new RuntimeException("Environment variables BOT_TOKEN and API_KEY must be set")
-          ) >> IO(ExitCode.Success)
+          )
     } yield exitCode
 
   private def readEnvVar(name: String): IO[Option[String]] =
