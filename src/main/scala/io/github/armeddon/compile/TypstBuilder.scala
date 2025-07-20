@@ -61,7 +61,7 @@ object TypstBuilder {
     _ <- IO.blocking {
       Files.writeString(file.toPath, content, StandardOpenOption.WRITE)
     }.void
-    _ <- logger.info(s"Wrote to file ${file.toPath().toString()}")
+    _ <- logger.info(s"Wrote to file ${file.toPath().toAbsolutePath()}")
   } yield ()
 
   private def compile(
@@ -76,7 +76,7 @@ object TypstBuilder {
           if (exitCode == 0) logger.info("Typst compiled successfully.")
           else
             for {
-              contents <- readFile(source).map(_.toString())
+              contents <- readFile(source).map(new String(_, "UTF-8"))
               _ <- logger.error(
                 s"Typst compilation failed. File contents: $contents"
               )
