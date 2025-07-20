@@ -2,10 +2,12 @@ package io.github.armeddon.bot
 
 import cats.Parallel
 import cats.effect._
-import cats.data.OptionT
+import cats.data.EitherT
 
 import telegramium.bots.high._
 import telegramium.bots.high.implicits._
+
+import org.typelevel.log4cats.Logger
 
 import io.github.armeddon.format.{Format, Message => MsgFormat}
 import io.github.armeddon.compile.TypstBuilder
@@ -14,12 +16,26 @@ import io.github.armeddon.upload._
 class InlineTypstBot(apiUrl: String)(implicit
     bot: Api[IO],
     asyncF: Async[IO],
-    parallel: Parallel[IO]
+    parallel: Parallel[IO],
+    logger: Logger[IO]
 ) extends LongPollBot[IO](bot) {
   import telegramium.bots._
 
-  override def onMessage(msg: Message): IO[Unit] =
-    msg.text match {
+  override def onMessage(msg: Message): IO[Unit] = for {
+    _ <- logger.info(
+      new StringBuilder("Received message: ")
+        .append(
+          msg.text
+            .getOrElse("")
+        )
+        .append(
+          msg.from
+            .map(user => s" from ${user.firstName} (${user.id.toString})")
+            .getOrElse("")
+        )
+        .toString
+    )
+    _ <- msg.text match {
       case Some(text) if text.startsWith("/") => {
         val (cmd, rest) = text.tail.span(!_.isWhitespace)
         parseCommand(
@@ -32,9 +48,18 @@ class InlineTypstBot(apiUrl: String)(implicit
         parseText(msg.chat.id, text, Format.default)
       case None => asyncF.unit
     }
+  } yield ()
 
   override def onInlineQuery(query: InlineQuery): IO[Unit] =
     for {
+      _ <- logger.info(
+        new StringBuilder("Received inline query: ")
+          .append(query.query)
+          .append(" from ")
+          .append(query.from.firstName)
+          .append(s" (${query.from.id.toString})")
+          .toString
+      )
       image <- InlineTypstBot.getImage(
         apiUrl,
         query.query,
@@ -44,13 +69,22 @@ class InlineTypstBot(apiUrl: String)(implicit
     } yield ()
 
   private def parseCommand(id: Long, cmd: String, text: String): IO[Unit] =
-    Command
-      .parse(cmd)
-      .map {
-        case Command.Format(fmt) => parseText(id, text, fmt)
-        case Command.Info        => showInfo(id)
-      }
-      .getOrElse(IO(()))
+    for {
+      _ <- logger.info(s"Received command: /$cmd.")
+      _ <- Command
+        .parse(cmd)
+        .map {
+          case Command.Format(fmt) =>
+            for {
+              _ <- logger.info(
+                s"Set result format to ${fmt.toString}."
+              )
+              _ <- parseText(id, text, fmt)
+            } yield ()
+          case Command.Info => showInfo(id)
+        }
+        .getOrElse(IO.unit)
+    } yield ()
 
   private def showInfo(id: Long): IO[Unit] =
     sendMessage(
@@ -76,26 +110,36 @@ class InlineTypstBot(apiUrl: String)(implicit
         } yield ()
     }
 
-  private def answerOnMessageImage(id: Long, image: Option[Image]): IO[Unit] =
-    image map { case Image(url, _, _) =>
-      sendPhoto(
-        chatId = ChatIntId(id),
-        photo = InputLinkFile(url)
-      ).exec.void
-    } getOrElse answerOnMessageError(id)
+  private def answerOnMessageImage(
+      id: Long,
+      image: Either[String, Image]
+  ): IO[Unit] =
+    image match {
+      case Right(Image(url, _, _)) =>
+        sendPhoto(
+          chatId = ChatIntId(id),
+          photo = InputLinkFile(url)
+        ).exec.void
+      case Left(error) => answerOnMessageError(id, error)
+    }
 
-  private def answerOnMessageText(id: Long, text: Option[String]): IO[Unit] =
-    text map { txt =>
-      sendMessage(
-        chatId = ChatIntId(id),
-        text = txt
-      ).exec.void
-    } getOrElse answerOnMessageError(id)
+  private def answerOnMessageText(
+      id: Long,
+      text: Either[String, String]
+  ): IO[Unit] =
+    text match {
+      case Right(txt) =>
+        sendMessage(
+          chatId = ChatIntId(id),
+          text = txt
+        ).exec.void
+      case Left(error) => answerOnMessageError(id, error)
+    }
 
-  private def answerOnMessageError(id: Long): IO[Unit] =
+  private def answerOnMessageError(id: Long, error: String): IO[Unit] =
     sendMessage(
       chatId = ChatIntId(id),
-      text = "That's incorrect Typst!"
+      text = error
     ).exec.void
 
   private def answerInline(query: InlineQuery, image: Option[Image]): IO[Unit] =
@@ -118,21 +162,31 @@ object InlineTypstBot {
       apiUrl: String,
       code: String,
       format: Format
-  ): IO[Option[Image]] =
+  )(implicit logger: Logger[IO]): IO[Either[String, Image]] =
     (for {
-      compiled <- OptionT(TypstBuilder.build(code, format))
-      encoded <- OptionT.pure[IO](Encoder.encode(compiled))
-      json <- OptionT.liftF(ImageUploader.upload(apiUrl)(encoded))
-      image <- OptionT.fromOption[IO](ResponseParser.parseImage(json))
+      compiled <- EitherT(TypstBuilder.build(code, format))
+      encoded <- EitherT.rightT[IO, String](Encoder.encode(compiled))
+      json <- EitherT.right[String](ImageUploader.upload(apiUrl)(encoded))
+      parseResult = ResponseParser.parseImage(json)
+      _ <- EitherT.liftF(
+        if (parseResult.isDefined) {
+          logger.info("Image uploaded successfully.")
+        } else {
+          logger.error("Image upload failed.")
+        }
+      )
+      image <- EitherT.fromEither[IO](
+        parseResult.toRight("Internal error")
+      )
     } yield image).value
 
   private def getText(
       code: String,
       format: Format
-  ): IO[Option[String]] =
+  )(implicit logger: Logger[IO]): IO[Either[String, String]] =
     (for {
-      compiled <- OptionT(TypstBuilder.build(code, format))
-      text <- OptionT.pure[IO](new String(compiled, "UTF-8"))
+      compiled <- EitherT(TypstBuilder.build(code, format))
+      text <- EitherT.rightT[IO, String](new String(compiled, "UTF-8"))
     } yield text).value
 
   private val infoText = """

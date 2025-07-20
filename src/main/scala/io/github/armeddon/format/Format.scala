@@ -4,6 +4,8 @@ sealed trait Format {
   def format: String
   def suffix: String = "." + format
   def message: Message
+
+  override def toString(): String = format
 }
 object Format {
   def default: Format = PNG

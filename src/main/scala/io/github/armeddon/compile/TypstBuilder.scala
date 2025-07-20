@@ -1,7 +1,9 @@
 package io.github.armeddon.compile
 
 import cats.effect._
-import cats.data.OptionT
+import cats.data.EitherT
+
+import org.typelevel.log4cats.Logger
 
 import java.io.File
 import java.nio.file.{Files, Paths, StandardOpenOption}
@@ -12,13 +14,16 @@ object TypstBuilder {
   def build(
       content: String,
       format: Format
-  ): IO[Option[Array[Byte]]] =
+  )(implicit logger: Logger[IO]): IO[Either[String, Array[Byte]]] =
     (for {
       sourceFile <- createTempFileResource(sourcePrefix, sourceSuffix)
       targetFile <- createTempFileResource(targetPrefix, format.suffix)
     } yield (sourceFile, targetFile)).use { case (source, target) =>
       for {
+        _ <- logger.info("Created source and target files.")
+        _ <- logger.info("Writing Typst code into the source file.")
         _ <- writeTypstCode(source, content, format)
+        _ <- logger.info("Typst code written into the source file.")
         compiled <- compile(source, target, format)
       } yield compiled
     }
@@ -58,15 +63,18 @@ object TypstBuilder {
       source: File,
       target: File,
       format: Format
-  ): IO[Option[Array[Byte]]] =
+  )(implicit logger: Logger[IO]): IO[Either[String, Array[Byte]]] =
     createTypstProcessResource(source, target, format).use { process =>
       (for {
-        exitCode <- OptionT.liftF(IO.blocking(process.waitFor()))
+        exitCode <- EitherT.right[String](IO.blocking(process.waitFor()))
+        _ <- EitherT.right[String] {
+          if (exitCode == 0) logger.info("Typst compiled successfully.")
+          else logger.error("Typst compilation failed.")
+        }
         contents <-
           if (exitCode == 0)
-            OptionT.liftF(readFile(target))
-          else
-            OptionT.none[IO, Array[Byte]]
+            EitherT.right[String](readFile(target))
+          else EitherT.leftT[IO, Array[Byte]]("That's incorrect Typst code.")
       } yield contents).value
     }
 
@@ -88,7 +96,8 @@ object TypstBuilder {
   ): IO[Process] =
     IO.blocking {
       new ProcessBuilder(
-        "typst", "compile",
+        "typst",
+        "compile",
         source.getAbsolutePath(),
         target.getAbsolutePath(),
         s"--format=${format.format}",

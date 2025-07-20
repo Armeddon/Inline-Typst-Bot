@@ -1,9 +1,10 @@
 project/metals.sbt
 project/.bloop/
 project/project/
-
-.bloop/
-
-.bsp/
+project/target
 
 .metals/
+.bloop/
+.bsp/
+target/
+.scalafmt.conf
