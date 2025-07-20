@@ -31,39 +31,30 @@ object TypstBuilder {
   private def createTempFileResource(
       prefix: String,
       suffix: String
-  )(implicit logger: Logger[IO]): Resource[IO, File] =
+  ): Resource[IO, File] =
     Resource.make(createTempFile(prefix, suffix))(file =>
       IO.blocking(file.delete).void
     )
 
-  private def createTempFile(prefix: String, suffix: String)(implicit
-      logger: Logger[IO]
-  ): IO[File] = for {
+  private def createTempFile(prefix: String, suffix: String): IO[File] = for {
     file <- IO.blocking(File.createTempFile(prefix, suffix))
     _ <- IO.blocking(file.deleteOnExit())
-    pathString <- IO(file.toPath().toAbsolutePath().toUri().getRawPath())
-    _ <- logger.info(s"Created a temp file $pathString")
   } yield file
 
   private def writeTypstCode(
       file: File,
       code: String,
       format: Format
-  )(implicit logger: Logger[IO]): IO[Unit] =
+  ): IO[Unit] =
     format match {
       case Format.HTML => write(file, code)
       case _           => write(file, preamble ++ code)
     }
 
-  private def write(file: File, content: String)(implicit
-      logger: Logger[IO]
-  ): IO[Unit] = for {
-    _ <- IO.blocking {
+  private def write(file: File, content: String): IO[Unit] =
+    IO.blocking {
       Files.writeString(file.toPath, content, StandardOpenOption.WRITE)
     }.void
-    pathString = file.toPath().toAbsolutePath().toUri().getRawPath()
-    _ <- logger.info(s"Wrote to file $pathString")
-  } yield ()
 
   private def compile(
       source: File,
