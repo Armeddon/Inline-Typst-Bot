@@ -1,15 +1,12 @@
-FROM alpine AS builder
-RUN apk add --no-cache curl xz
-RUN curl -fsSL https://typst.community/typst-install/install.sh | sh
+FROM 123marvin123/typst AS typst
 
-
-FROM sbtscala/scala-sbt:graalvm-community-22.0.1_1.10.7_2.13.15
+FROM sbtscala/scala-sbt:graalvm-community-22.0.1_1.10.7_2.13.15 AS app
 
 ARG UID
 ARG GID
 ARG USERNAME=inline-typst-bot
 
-COPY --from=builder /root/.typst/bin/typst /usr/local/bin/typst
+COPY --from=typst /usr/local/bin/typst /usr/local/bin/typst
 
 RUN groupadd --gid ${GID} ${USERNAME} \
  && useradd --uid ${UID} --gid ${GID} --shell /bin/bash --create-home ${USERNAME}
