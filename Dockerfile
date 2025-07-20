@@ -13,7 +13,8 @@ ARG GID
 ARG USERNAME=inline-typst-bot
 
 COPY --from=typst-builder /usr/bin/typst /usr/local/bin/typst
-COPY --from=ssl-builder /usr/lib/x86_64-linux-gnu/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so.1.1
+COPY --from=ssl-builder /usr/lib/x86_64-linux-gnu/libssl.so.1.1 /usr/lib/
+COPY --from=ssl-builder /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /usr/lib
 
 RUN groupadd --gid ${GID} ${USERNAME} \
  && useradd --uid ${UID} --gid ${GID} --shell /bin/bash --create-home ${USERNAME}
