@@ -1,4 +1,4 @@
-FROM 123marvin123/typst AS typst
+FROM 123marvin123/typst:0.13.1 AS typst
 
 FROM sbtscala/scala-sbt:graalvm-community-22.0.1_1.10.7_2.13.15 AS app
 
@@ -6,7 +6,7 @@ ARG UID
 ARG GID
 ARG USERNAME=inline-typst-bot
 
-COPY --from=typst /usr/local/bin/typst /usr/local/bin/typst
+COPY --from=typst /usr/bin/typst /usr/local/bin/typst
 
 RUN groupadd --gid ${GID} ${USERNAME} \
  && useradd --uid ${UID} --gid ${GID} --shell /bin/bash --create-home ${USERNAME}
