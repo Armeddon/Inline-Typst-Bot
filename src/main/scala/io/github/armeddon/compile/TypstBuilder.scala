@@ -36,12 +36,14 @@ object TypstBuilder {
       IO.blocking(file.delete).void
     )
 
-  private def createTempFile(prefix: String, suffix: String): IO[File] =
-    IO.blocking {
-      val file = File.createTempFile(prefix, suffix)
-      file.deleteOnExit()
-      file
-    }
+  private def createTempFile(prefix: String, suffix: String)(implicit
+      logger: Logger[IO]
+  ): IO[File] = for {
+    file <- IO.blocking(File.createTempFile(prefix, suffix))
+    _ <- IO.blocking(file.deleteOnExit())
+    pathString <- IO(file.toPath().toAbsolutePath())
+    _ <- logger.info(s"Created a temp file $pathString")
+  } yield file
 
   private def writeTypstCode(
       file: File,
@@ -49,15 +51,18 @@ object TypstBuilder {
       format: Format
   ): IO[Unit] =
     format match {
-      case Format.HTML =>
-        write(file, code)
-      case _ => write(file, preamble ++ code)
+      case Format.HTML => write(file, code)
+      case _           => write(file, preamble ++ code)
     }
 
-  private def write(file: File, content: String): IO[Unit] =
-    IO.blocking {
+  private def write(file: File, content: String)(implicit
+      logger: Logger[IO]
+  ): IO[Unit] = for {
+    _ <- IO.blocking {
       Files.writeString(file.toPath, content, StandardOpenOption.WRITE)
     }.void
+    _ <- logger.info(s"Wrote to file ${file.toPath().toString()}")
+  } yield ()
 
   private def compile(
       source: File,
@@ -69,7 +74,13 @@ object TypstBuilder {
         exitCode <- EitherT.right[String](IO.blocking(process.waitFor()))
         _ <- EitherT.right[String] {
           if (exitCode == 0) logger.info("Typst compiled successfully.")
-          else logger.error("Typst compilation failed.")
+          else
+            for {
+              contents <- readFile(source).map(_.toString())
+              _ <- logger.error(
+                s"Typst compilation failed. File contents: $contents"
+              )
+            } yield ()
         }
         contents <-
           if (exitCode == 0)
