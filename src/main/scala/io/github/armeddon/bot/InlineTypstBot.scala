@@ -142,20 +142,27 @@ class InlineTypstBot(apiUrl: String)(implicit
       text = error
     ).exec.void
 
-  private def answerInline(query: InlineQuery, image: Option[Image]): IO[Unit] =
-    answerInlineQuery(
-      inlineQueryId = query.id,
-      results = image.map { case Image(url, width, height) =>
-        InlineQueryResultPhoto(
-          id = "0",
-          photoUrl = url,
-          thumbnailUrl = url,
-          photoWidth = Some(width),
-          photoHeight = Some(height)
-        )
-      }.toList,
-      cacheTime = Some(0)
-    ).exec.void
+  private def answerInline(
+      query: InlineQuery,
+      image: Either[String, Image]
+  ): IO[Unit] =
+    image match {
+      case Right(Image(url, width, height)) =>
+        answerInlineQuery(
+          inlineQueryId = query.id,
+          results = List(
+            InlineQueryResultPhoto(
+              id = "0",
+              photoUrl = url,
+              thumbnailUrl = url,
+              photoWidth = Some(width),
+              photoHeight = Some(height)
+            )
+          ),
+          cacheTime = Some(0)
+        ).exec.void
+      case Left(error) => IO.unit
+    }
 }
 object InlineTypstBot {
   private def getImage(
