@@ -41,7 +41,7 @@ object TypstBuilder {
   ): IO[File] = for {
     file <- IO.blocking(File.createTempFile(prefix, suffix))
     _ <- IO.blocking(file.deleteOnExit())
-    pathString <- IO(file.toPath().toAbsolutePath())
+    pathString <- IO(file.toPath().toAbsolutePath().toString())
     _ <- logger.info(s"Created a temp file $pathString")
   } yield file
 
@@ -61,7 +61,8 @@ object TypstBuilder {
     _ <- IO.blocking {
       Files.writeString(file.toPath, content, StandardOpenOption.WRITE)
     }.void
-    _ <- logger.info(s"Wrote to file ${file.toPath().toAbsolutePath()}")
+    pathString = file.toPath().toAbsolutePath().toString()
+    _ <- logger.info(s"Wrote to file $pathString")
   } yield ()
 
   private def compile(
