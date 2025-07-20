@@ -21,16 +21,6 @@ jobs:
       - name: Set up docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Cache sbt dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.ivy2/cache
-            ~/.sbt
-          key: ${{ runner.os }}-sbt--${{ hashFiles('**/*.sbt') }}
-          restore-keys:
-            ${{ runner.os }}-sbt-
-
       - name: Build containers
         run: |
           docker compose build
