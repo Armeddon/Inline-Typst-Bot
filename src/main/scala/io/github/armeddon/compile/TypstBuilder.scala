@@ -31,7 +31,7 @@ object TypstBuilder {
   private def createTempFileResource(
       prefix: String,
       suffix: String
-  ): Resource[IO, File] =
+  )(implicit logger: Logger[IO]): Resource[IO, File] =
     Resource.make(createTempFile(prefix, suffix))(file =>
       IO.blocking(file.delete).void
     )
@@ -49,7 +49,7 @@ object TypstBuilder {
       file: File,
       code: String,
       format: Format
-  ): IO[Unit] =
+  )(implicit logger: Logger[IO]): IO[Unit] =
     format match {
       case Format.HTML => write(file, code)
       case _           => write(file, preamble ++ code)
